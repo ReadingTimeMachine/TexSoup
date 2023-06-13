@@ -14,6 +14,8 @@ TexSoup is a fault-tolerant, Python3 package for searching, navigating, and modi
 
 Created by [Alvin Wan](http://alvinwan.com) + [contributors](https://github.com/alvinwan/TexSoup/graphs/contributors).
 
+**NOTE:** This fork is an ongoing effort to support "not clean" TeX documents which include things like wonky environment beginnings/endings, and special math modes (e.g. `\[` and `]\`).  Also, some word-tokenization is going to be added.
+
 # Getting Started
 
 To parse a $LaTeX$ document, pass an open filehandle or a string into the
