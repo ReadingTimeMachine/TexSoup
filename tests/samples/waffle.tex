@@ -3,6 +3,10 @@
 \newcommand{\be}{\begin{ equation}}
 \newcommand{\ee}{\end{equation }}
 
+\newcommand{\bee}[1]{\begin{equation}\label{e:#1}}
+\newcommand{\eee}{\end{equation}}
+
+
 \def \etal {{\em et al.}}
 
 \begin{document}
@@ -41,5 +45,10 @@ C = C_2 + 1
 
 
 Sometimes I like to write with weird commands like Naiman \etal\ which can make it tricky to parse things.
+
+\bee{lenseq}
+    A(\xi) = \frac12\left(\xi+\frac1\xi\right),
+\eee
+
 
 \end{document}

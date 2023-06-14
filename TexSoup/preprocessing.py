@@ -1,5 +1,6 @@
 # Pre-processing for any fixes that need to be applied before generation of soup
 import re
+import numpy as np
 
 def process_begin_end(tex_doc,
                      search_weirdos_begin = r'\\begin(\s*){(\s*)[A-Za-z]*(\s*)}',
@@ -318,3 +319,136 @@ def get_newcommands_and_newenvs(text,
                 continue
                 
     return newcommands, newenvironments
+
+
+def find_args_newcommands(newcommands, error_out = False, verbose=False):
+    # counting arguments
+    args = []
+    err = False
+    for i,nn in enumerate(newcommands):
+        nnc = nn[1]
+        ind = 0
+        nums = []
+        while ind < len(nnc): # loop through the whole thing
+            if '#' in nnc[ind:]: # have some inputs!
+                ind = nnc[ind:].index('#')+ind # find next, keep index of whole
+                if ind==0 or (nnc[ind-1]!='\\' and ind<len(nnc)-1): # zero index, not escaped, >1 left
+                    if nnc[ind+1].isdigit(): # #1
+                        nums.append(int(nnc[ind+1]))
+                        if ind<len(nnc)-2: # like #11, should only be #1-#9 if there is extra 
+                                           # number, we could have an issue
+                            if nnc[ind+2].isdigit():
+                                if verbose: 
+                                    print('more dig','||', nnc, 
+                                                  '||', nnc[ind+2], '||', 
+                                                  nnc[ind+2:])
+                                    print('')
+                        ind+=2 # add 2 because #(DIGIT)
+                    else: # not digit, moving on... could be ## !
+                        ind += 1
+                else:
+                    ind += 1
+            else:
+                ind += len(nnc[ind:])
+        if len(nums)>0:
+            nums = np.max(nums)
+        else:
+            nums=0
+        #print(nums)
+        nout = list(nn).copy()
+        nout.extend([nums])
+        args.append(nout)
+
+    errArgs = [False]
+    for ia,a in enumerate(args):
+        if a[-1]>0:
+            # check for [NUM] and not from something like \def\command#1
+            if '['+str(a[-1]) + ']' not in a[1] and '#' not in a[0] and '@' not in a[1]:
+                if '\\def' not in a[1] and '{#' + str(a[-1]) + '}' not in a[1]: # sometimes \def\command{#(DIGIT)}
+                    # is it just an add one?
+                    if '[' + str(a[-1]+1) +']' not in a[1]:
+                        if verbose:
+                            print(a)
+                            print(f)
+                        # just add and hope its all OK
+                        i2 = a[1].split('[')[-1].split(']')[0]
+                        if verbose: print(i2)
+                        try:
+                            args[ia][-1] = int(i2) 
+                        except:
+                            if verbose:
+                                print('error in trying to get args:', a, ff)
+                            errArgs = [True,a]
+                    else:
+                        args[ia][-1] = a[-1]+1
+
+    if errArgs[0]:
+        if error_out:
+            print('error in args for newcommands!')
+            import sys; sys.exit()
+        err = True
+        
+    if error_out:
+        return args
+    else:
+        return args, err
+    
+    
+def find_args_newenvironments(newenvironments, error_out = False, verbose =False):
+    # arguments of new environments not in commands
+    args_env = []
+    err = False
+    for i,nn in enumerate(newenvironments):
+        nnc = nn[1]
+        ind = 0
+        nums = []
+        while ind < len(nnc): # loop through the whole thing
+            if '#' in nnc[ind:]: # have some inputs!
+                ind = nnc[ind:].index('#')+ind # find next, keep index of whole
+                if ind==0 or (nnc[ind-1]!='\\' and ind<len(nnc)-1): # zero index, not escaped, >1 left
+                    if nnc[ind+1].isdigit(): # #1
+                        nums.append(int(nnc[ind+1]))
+                        if ind<len(nnc)-2: # like #11, should only be #1-#9 if there is extra 
+                                           # number, we could have an issue
+                            if nnc[ind+2].isdigit():
+                                if verbose:
+                                    print('more dig','||', nnc, '||', nnc[ind+2], '||', nnc[ind+2:])
+                                    print('')
+                        ind+=2 # add 2 because #(DIGIT)
+                    else: # not digit, moving on... could be ## !
+                        ind += 1
+                else:
+                    ind += 1
+            else:
+                ind += len(nnc[ind:])
+        if len(nums)>0:
+            nums = np.max(nums)
+        else:
+            nums=0
+        #print(nums)
+        nout = list(nn).copy()
+        nout.extend([nums])
+        args_env.append(nout)
+        
+    for ia,a in enumerate(args_env):
+        if a[-1]>0:
+            # check for [NUM] and not from something like \def\command#1
+            if '['+str(a[-1]) + ']' not in a[1] and '#' not in a[0] and '@' not in a[1]:
+                if '\\def' not in a[1] and '{#' + str(a[-1]) + '}' not in a[1]: # sometimes \def\command{#(DIGIT)}
+                    # is it just an add one?
+                    if '[' + str(a[-1]+1) +']' not in a[1]:
+                        if verbose:
+                            print(a)
+                            print(f)
+                        # just add and hope its all OK
+                        i2 = a[1].split('[')[-1].split(']')[0]
+                        if verbose: print(i2)
+                        args_env[ia][-1] = int(i2)        
+                    else:
+                        args_env[ia][-1] = a[-1]+1
+                        
+    # no real errors now, but could change
+    if error_out:
+        return args_env
+    else:
+        return args_env, err
