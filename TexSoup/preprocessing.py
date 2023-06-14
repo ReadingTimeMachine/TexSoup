@@ -109,7 +109,7 @@ def split_function_with_delimiters(l,function='\\footnote',
         return ind2,ind3 # ind2 start of braket, ind3 is end of bracket
 
 
-def search_spc(l,function='\\footnote',
+def spc(l,function='\\footnote',
                                    dopen='{',dclose='}', error_tag='',
                                               start_after_function=False,
                                               error_out = True,
@@ -158,3 +158,163 @@ def search_spc(l,function='\\footnote',
         return ind1,ind2 # ind1 starts at the start of the function, ind3 at its closing bracket
     else:
         return ind1,ind2,error
+    
+    
+def get_newcommands_and_newenvs(text, 
+                                search = r'(\\newcommand)|(\\renewcommand)|(\\environment)|(\\newenvironment)|(\\renewenvironment)|(\\def)',
+                                verbose = False):
+
+    # -------------- search for new commands/environments ---------
+    ind = 0
+    news = []
+    while ind<len(text):
+        s = re.search(search, text[ind:])
+        if s:
+            news.append((s.group(0),ind+s.span()[0],ind+s.span()[1]))
+            ind += s.span()[1]
+        else: # nothing left!
+            ind += len(text[ind:])
+
+
+    # NOTE: all of this below is in no way elegant and should be dealt with
+    newcommands = []
+    for c,start,end in news:
+        if ('\\newcommand' in c) or ('\\renewcommand' in c):
+            ind1,ind2,err = spc(text[start:],function=c,
+                                dopen='{',dclose='}',
+                               error_out=False)
+            if not err:
+                if ind1==-1 or ind2==-1:
+                    err = True
+                    error.append( ('error') )
+                    continue
+                cc = "".join(text[start:][ind1:ind2].split())
+                #cc = text[start:][ind1:ind2].replace(' ','')
+                if '\\newcommand' in c:
+                    ic = cc.index('\\newcommand')+len('\\newcommand')
+                elif '\\renewcommand' in c:
+                    ic = cc.index('\\renewcommand')+len('\\renewcommand')
+                else:
+                    if verbose: print('something has gone super wrong!')
+                    err=True
+                if not err:
+                    char = cc[ic]
+                    if char == '*': # stared version, \newcommand*{\cmd}[nargs]{defn}
+                        ic += 1
+                        char = cc[ic]
+                    if char == '{': # "typical"
+                        # get out interior
+                        nc = text[start:start+ind2]
+                        ind11 = nc.index('{')
+                        # get actual command
+                        ncc = nc[ind11+1:-1]
+                        # get rest of command
+                        ind11,ind22,err = spc(text[start+ind2:],function='',
+                                          dopen='{',dclose='}', error_out=False)
+                        if not err:
+                            nc2 = text[start:start+ind22+ind2]
+                            newcommands.append( (ncc,nc2,start,start+ind2+ind22) )
+                        else:
+                            newcommands.append( ('error'))
+                            continue
+                    elif char == '\\': # weirder - \newcommand\foo[]{}
+                        # get out interior
+                        nc = text[start:start+ind2]
+                        i2 = nc.index('{') # assumes \def\foo{defn}
+                        # is there a '[' ? like \newcommand\foo[nargs]{defn}
+                        i4 = i2 + 1
+                        try:
+                            i4 = nc.index('[')
+                        except:
+                            pass
+                        # also need to check for commandds like \newcommand\[{\begin{equation}}
+                        if i4 < i2: # have a [
+                            if ']' in nc[:i2]: # have closed! otherwise \[ is the command
+                                i2 = i4
+                        nc2 = nc[:i2]
+                        i3 = nc2[::-1].index('\\')
+                        ncc = '\\'+nc2[len(nc2)-i3:]                        
+                        newcommands.append( (ncc,nc,start,start+ind2) )
+                else:
+                    newcommands.append(('error'))
+                    continue
+
+
+        elif '\\def' in c:
+            # check one thing -- for the whole start to spell out define
+            # want to search for \def NOT \define as the start
+            if text[start:start+len('\\define')] == '\\define':
+                err = True
+            else:
+                ind1,ind2,err = spc(text[start:],function=c,
+                                    dopen='{',dclose='}',
+                                   error_out=False)
+            if not err:
+                # get out interior
+                nc = text[start:start+ind2]
+                # find actual command
+                i2 = nc.index('{')
+                nc2 = nc[:i2]
+                i3 = nc2[::-1].index('\\')
+                ncc = '\\'+nc2[len(nc2)-i3:]
+                newcommands.append( (ncc,nc,start,start+ind2) )
+            else:
+                newcommands.append(('error'))
+                continue
+
+
+    # also grab possible environments
+    # check no blank \environment
+    errEnv = False
+    for c in news:
+        if '\\environment' in c:
+            errEnv = True
+
+    if errEnv:
+        newcommands.append(('error'))
+        # HERE continue        
+
+    newenvironments = []
+    #print('here')
+    for c,start,end in news:
+        if ('\\newenvironment' in c) or ('\\renewenvironment' in c):
+            #\newenvironment{nam}[args]{begdef}{enddef} --> "nam"
+            ind1,ind2,err = spc(text[start:],function=c,
+                                dopen='{',dclose='}',
+                               error_out=False)
+            if not err:
+                # get environment name
+                i1 = text[start:][ind1:ind2].index('{')+1
+                i2 = text[start:][ind1:ind2].index('}')
+                envname = text[start:][ind1:ind2][i1:i2]
+
+                # should be two other {}'s -- one of two
+                ind11,ind22,err = spc(text[start:][ind2:],
+                                      function='',
+                                      dopen='{',dclose='}',
+                                     error_out=False)
+                if not err:
+                    ind22 += ind2
+                    # should be two other {}'s -- two of two
+                    ind111,ind222,err = spc(text[start:][ind22:],
+                                            function='',dopen='{',
+                                            dclose='}',
+                                           error_out=False)
+                    if not err:
+                        ind222 += ind22
+                        newenvironments.append( (envname, text[start:][ind1:ind222], 
+                                                 start, start+ind222) )
+                    else:
+                        newenvironments.append( ('error'))
+                        #print('err here1')
+                        continue
+                else:
+                    newenvironments.append(('error'))
+                    #print('err here2')
+                    continue
+            else:
+                newenvironments.append(('error'))
+                #print('err here3')
+                continue
+                
+    return newcommands, newenvironments
