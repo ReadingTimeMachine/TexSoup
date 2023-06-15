@@ -1,5 +1,7 @@
 # post processing utils
-from TexSoup.data import TexNamedEnv, TexCmd
+from TexSoup.data import TexNamedEnv, TexCmd, TexText, TexMathModeEnv, BraceGroup
+
+from TexSoup.preprocessing import accents, accents_alone
 
 def clean_slash_commands(soup, only_clean_document = True):
     if only_clean_document:
@@ -58,3 +60,98 @@ def get_replacement_tex(tex_doc, soup, isss, s, verbose=False, strip=True):
         print(strout)
         print('----------------------')
     return strout
+
+
+def parse_soup(soup, tex_doc_accent, verbose=False):
+    icount = 0
+    texout_arr = []
+    errorAll = False
+    for isss, s in enumerate(soup.all):
+        if type(s.expr) == TexNamedEnv: # parts of the text
+            if 'begin' in s.expr.begin and 'document' in s.expr.begin:
+                # add preamble
+                #texout_arr.append((preamble,'preamble'))
+                texout_arr.append(('\\begin{document}\n','beginDoc'))
+                try: 
+                    iterator = s.all
+                except:
+                    errorAll = True
+                if not errorAll:
+                    for is3,ss in enumerate(s.all):  
+                        if type(ss.expr) == TexText: # mark text words
+                            strout = get_replacement_tex(tex_doc_accent, s, is3,ss, verbose=verbose)
+                            if len(strout.strip()) > 0: # not just white-space
+                                if strout.lstrip()[0] != '%': # not a comment:
+                                    if str(ss.expr) in accents_alone: # accent alone
+                                        strout = get_replacement_tex(tex_doc_accent, s, is3,ss, verbose=verbose)
+                                        texout_arr.append((strout, 'accent'))
+                                    elif texout_arr[-1][0] in accents:
+                                        strout = get_replacement_tex(tex_doc_accent, s, is3,ss, verbose=verbose)
+                                        texout_arr[-1] = ((texout_arr[-1][0] + strout, 'accent')) # put together
+                                    else:
+                                        texout_arr.append((strout, 'text'))
+                                else: # for all comments
+                                    texout_arr.append((strout, 'comment'))
+                            else: # just whitespace
+                                texout_arr.append((strout,'whitespace'))
+                        elif 'cite' in ss.name: # citations
+                            strout = get_replacement_tex(tex_doc_accent, s, is3,ss, verbose=verbose)
+                            texout_arr.append((strout, 'citation'))
+                        elif 'ref' in ss.name: # references
+                            strout = get_replacement_tex(tex_doc_accent, s, is3,ss, verbose=verbose)
+                            texout_arr.append((strout, 'reference'))
+                        elif type(ss.expr) == TexMathModeEnv: # inline math
+                            strout = get_replacement_tex(tex_doc_accent, s, is3,ss, verbose=verbose)
+                            texout_arr.append((strout,'inline'))
+                        elif type(ss.expr) == BraceGroup:
+                            strout = get_replacement_tex(tex_doc_accent, s, is3,ss, verbose=verbose)
+                            isAccent = False
+                            for a in accents:
+                                if a in strout:
+                                    isAccent = True
+                            if not isAccent:
+                                for a in accents_alone:
+                                    if a in strout:
+                                        isAccent = True
+                            if isAccent:
+                                texout_arr.append((strout,'accent'))
+                            else:
+                                # possible that last one is an accent
+                                if texout_arr[-1][0] in accents:
+                                    texout_arr[-1] = ((texout_arr[-1][0] + strout, 'accent')) # put together
+                                else: # just a bracket
+                                    texout_arr.append((strout,'bracket'))
+                        else: # a command or named environment
+                            # special ones
+                            if str(ss.expr).strip() == '\\S':
+                                strout = get_replacement_tex(tex_doc_accent, s, is3,ss, verbose=verbose)
+                                texout_arr.append((strout, 'S-command'))
+                            elif type(ss.expr) == TexNamedEnv:
+                                strout = get_replacement_tex(tex_doc_accent, s, is3,ss, verbose=verbose)
+                                #if 'eqnarray' in str(ss): import sys; sys.exit()
+                                texout_arr.append((strout, 'namedEnv'))
+                            elif str(ss.expr) in accents_alone: # accent alone
+                                strout = get_replacement_tex(tex_doc_accent, s, is3,ss, verbose=verbose)
+                                texout_arr.append((strout, 'accent'))
+                            elif texout_arr[-1][0] in accents:
+                                strout = get_replacement_tex(tex_doc_accent, s, is3,ss, verbose=verbose)
+                                texout_arr[-1] = ((texout_arr[-1][0] + strout, 'accent')) # put together
+                                #import sys; sys.exit()
+                            else:
+                                strout = get_replacement_tex(tex_doc_accent, s, is3,ss, verbose=verbose)
+                                texout_arr.append((strout,'commandOrBracket'))
+
+                else:
+                    continue
+                texout_arr.append(('\\end{document}\n','endDoc'))
+            else: # something else -- outside of document
+                if verbose: print('not in begin/end!', s)
+                #import sys; sys.exit()
+                ##errorAll = True
+                strout = get_replacement_tex(tex_doc_accent, soup, isss,s, verbose=verbose)
+                texout_arr.append((strout,'outside'))
+        else: # typically \usepackage commands, \documentclass, etc
+            strout = get_replacement_tex(tex_doc_accent, soup, isss,s, verbose=verbose)
+            texout_arr.append((strout, 'others'))
+            
+    return texout_arr
