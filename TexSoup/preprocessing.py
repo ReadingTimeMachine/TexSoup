@@ -2,6 +2,36 @@
 import re
 import numpy as np
 
+#https://en.wikibooks.org/wiki/LaTeX/Special_Characters
+# LaTeX command	Sample	Description
+# \`{o}	ò	grave accent
+# \'{o}	ó	acute accent
+# \^{o}	ô	circumflex
+# \"{o}	ö	umlaut, trema or dieresis
+# \H{o}	ő	long Hungarian umlaut (double acute)
+# \~{o}	õ	tilde
+# \c{c}	ç	cedilla
+# \k{a}	ą	ogonek
+# \l{}	ł	barred l (l with stroke)
+# \={o}	ō	macron accent (a bar over the letter)
+# \b{o}	o	bar under the letter
+# \.{o}	ȯ	dot over the letter
+# \d{u}	ụ	dot under the letter
+# \r{a}	å	ring over the letter (for å there is also the special command \aa)
+# \u{o}	ŏ	breve over the letter
+# \v{s}	š	caron/háček ("v") over the letter
+# \t{oo}	o͡o	"tie" (inverted u) over the two letters
+
+# "alone" accents
+# \o{}	ø	slashed o (o with stroke)
+# {\i}	ı	dotless i (i without tittle)
+accents = ['\\`',"\\'",'\\^','\\"','\\H', '\\~', '\\c', '\\k', 
+           '\\l', '\\=', '\\b', '\\.', '\\d', '\\r', '\\u', 
+           '\\v', '\\t']
+accents_alone = ['\\o', '{\\i}', '\\oe', '\\ae', '\\ss', '\\aa', '\\AA', 
+                '\\O', '\\AE', '\\OE']
+
+
 def process_begin_end(tex_doc,
                      search_weirdos_begin = r'\\begin(\s*){(\s*)[A-Za-z]*(\s*)}',
                      search_weirdos_end = r'\\end(\s*){(\s*)[A-Za-z]*(\s*)}'):
@@ -634,3 +664,215 @@ def replace_newcommands_and_newenvironments(text, args_newcommands, args_newenvi
                 print(c, 'gets commented')
 
     return text, error, warnings
+
+
+
+# for cleaning accents
+# for cleaning up accents -- these will only work in NON-math mode!
+def clean_accents_splits(main_body_here, verbose=True, return_is_accent_flag = False,
+                 error_out = False, addone=1):
+    """
+    return_is_accent_flag : if set to true, just flags the start/stop 
+                            index of the accent, does not fix
+    """
+    # all of these do the same:
+    # Naz\H { h }
+    # Naz\H{ h }
+    # Naz\H{h}
+    # Naz{ \H { h }} adds space at the beginning before the \H --> move this space outside
+    # Naz{ \ H { h }} does *not* apply the accent
+    # Naz\H{$\omega$} places accent *before* *whatever* is on the $$
+    # Naz\H h works
+    # Naz\Hh is an error
+    # Naz\H 8 (i.e. with a number) works
+    # Naz\H \n 8 also works (i.e with a newline)
+    
+    errOut = False
+
+    # need to split into accents that are denoted by punctuation or not
+    accentsNP = []; accentsP= []
+    for a in accents:
+        s = a.split('\\')[-1]
+        if re.search('[A-Za-z]',s): # non-punct
+            accentsNP.append(a)
+        else:
+            accentsP.append(a)
+            
+    if return_is_accent_flag:
+        accent_inds_out = []
+
+    # note \s is for ALL white spaces (space, tab, newline, \r, \t, \n)
+    main_body_here2 = []
+    imainbody = 0 # index for tracking throughout text
+    for m,mt in main_body_here:
+        if mt == '': # not labeled
+            ind=0
+            mout = ''
+            while ind<len(m):
+                found = False
+                istart_min = 1e50; iEnd=-1; replace_min=''
+                # --- not a letter accents -----
+                for r in accentsP: # not a letter
+                    # either: {[SPACES][ACCENT THAT IS NOT A LETTER][SPACES][LETTER/NUMBER][SPACES]} - { \' e }
+                    ss = '{'+ '(\s*)'+re.escape(r) + '(\s*)[A-Za-z0-9](\s*)'+'}' 
+                    if re.search(ss,m[ind:]):
+                        istart,iend = re.search(ss,m[ind:]).span()
+                        if istart < istart_min:
+                            # any space after { and before \ --> move outside
+                            replace = m[ind:][istart:iend]
+                            ib1 = replace.index('{')
+                            ib2 = replace.index('\\')
+                            replace_min = replace[ib1+1:ib2] + ''.join(replace.split())
+                            istart_min = istart; iEnd = iend
+
+                    # or: {[SPACES][ACCENT THAT IS NOT A LETTER][SPACES]{[SPACES][LETTER/NUMBER][SPACES]}[SPACES]} 
+                    #      - { \' { e } }
+                    ss = '{'+ '(\s*)'+re.escape(r) + '(\s*){(\s*)[A-Za-z0-9](\s*)}(\s*)'+'}' 
+                    if re.search(ss,m[ind:]):
+                        istart,iend = re.search(ss,m[ind:]).span()
+                        if istart<istart_min:
+                            # any space after { and before \ --> move outside
+                            replace = m[ind:][istart:iend]
+                            # this grabs ONLY the first one
+                            ib1 = replace.index('{')
+                            ib2 = replace.index('\\')
+                            replace_min = replace[ib1+1:ib2] + ''.join(replace.split())
+                            istart_min = istart; iEnd = iend
+
+                    # or: [ACCENT THAT IS NOT A LETTER][ANY SPACES][LETTER/NUMBER] - \'e or \' e
+                    ss = ''+re.escape(r) + '(\s*)[A-Za-z0-9]' 
+                    if re.search(ss,m[ind:]):
+                        istart,iend = re.search(ss,m[ind:]).span()
+                        if istart<istart_min:
+                            # take out space between
+                            replace = m[ind:][istart:iend]
+                            replace_min = ''.join(replace.split())
+                            istart_min = istart; iEnd = iend
+
+                    # or: [ACCENT THAT IS NOT A LETTER][SPACES]{[SPACES][LETTER][SPACES]} - 
+                    #.    - \'{o} or \'{ o } or \' {o}
+                    ss = ''+re.escape(r) + '(\s*)' + '{' + '(\s*)[A-Za-z0-9](\s*)' + '}' 
+                    if re.search(ss,m[ind:]):
+                        istart,iend = re.search(ss,m[ind:]).span()
+                        if istart<istart_min:
+                            # take out space between
+                            replace = m[ind:][istart:iend]
+                            replace_min = ''.join(replace.split())
+                            istart_min = istart; iEnd=iend
+
+                # --- YES a letter accents -----
+                for r in accentsNP: # a letter
+                    # either: {[SPACES][ACCENT THAT IS A LETTER][>1 SPACES][LETTER/NUMBER][SPACES]} 
+                    #   { \H e } --> {\H{e}}
+                    ss = '{'+ '(\s*)'+re.escape(r) + '(\s{1,})[A-Za-z0-9](\s*)'+'}' 
+                    if re.search(ss,m[ind:]):
+                        istart,iend = re.search(ss,m[ind:]).span()
+                        if istart<istart_min:
+                            # any space after { and before \ --> move outside
+                            replace = m[ind:][istart:iend]
+                            ib1 = replace.index('{')
+                            ib2 = replace.index('\\')
+                            # replace space after accent mark with {} and remove spaces
+                            replace = replace[ib1+1:ib2] + ''.join(replace.split())
+                            # re-add in accent mark with {} around the letter right after
+                            ib = replace.index(r)
+                            replace_min = replace[:ib+len(r)] + '{'+replace[ib+len(r)]+'}'+replace[ib+len(r)+1:]
+                            istart_min = istart; iEnd=iend
+
+                    # or: {[SPACES][ACCENT THAT IS A LETTER][ANY SPACES]{[SPACES][LETTER/NUMBER][SPACES]}[SPACES]} 
+                    #      - { \H { e } }
+                    ss = '{'+ '(\s*)'+re.escape(r) + '(\s*){(\s*)[A-Za-z0-9](\s*)}(\s*)'+'}' 
+                    if re.search(ss,m[ind:]):
+                        istart,iend = re.search(ss,m[ind:]).span()
+                        if istart<istart_min:
+                            # any space after { and before \ --> move outside
+                            replace = m[ind:][istart:iend]
+                            # this grabs ONLY the first one
+                            ib1 = replace.index('{')
+                            ib2 = replace.index('\\')
+                            replace_min = replace[ib1+1:ib2] + ''.join(replace.split())
+                            istart_min = istart; iEnd=iend
+
+                    # or: [ACCENT THAT IS A LETTER][>1 SPACES][LETTER/NUMBER]
+                    #    \H e --> \H{e}
+                    #print('hi')
+                    ss = ''+re.escape(r) + '(\s{1,})[A-Za-z0-9]' 
+                    if re.search(ss,m[ind:]):
+                        istart,iend = re.search(ss,m[ind:]).span()
+                        if istart<istart_min:
+                            # take out space between
+                            replace = m[ind:][istart:iend]
+                            replace = ''.join(replace.split())
+                            # re-add in accent mark with {} around the letter right after
+                            ib = replace.index(r)
+                            replace_min = replace[:ib+len(r)] + '{'+replace[ib+len(r)]+'}'+replace[ib+len(r)+1:]
+                            istart_min = istart; iEnd=iend
+
+                    # or: [ACCENT THAT IS A LETTER][SPACES]{[SPACES][LETTER][SPACES]} - \H{o} or \H{ o }
+                    ss = ''+re.escape(r) + '(\s*)' + '{' + '(\s*)[A-Za-z0-9](\s*)' + '}' 
+                    if re.search(ss,m[ind:]):
+                        istart,iend = re.search(ss,m[ind:]).span()
+                        if istart<istart_min:
+                            # take out space between
+                            replace = m[ind:][istart:iend]
+                            replace_min = ''.join(replace.split())
+                            istart_min = istart; iEnd=iend
+
+                if len(replace_min)>0: # got something to replace!
+                    #print('hi!')
+                    #print('|'+m[ind:][istart_min:iEnd]+'|')
+                    if verbose: 
+                        old = m[ind:][istart_min:iEnd]
+                        if old != replace_min:
+                            print(old,'becomes',replace_min)
+                    # update
+                    istart = istart_min; iend = iEnd; replace = replace_min
+                    if not return_is_accent_flag: # update if not returning!
+                        mout += m[ind:][:istart]
+                        mout += replace
+                        try:
+                            mout += m[ind:][iend]
+                        except:
+                            try:
+                                mout += m[ind:][min(iend,len(m[ind:]))]
+                                print('THIS MIGHT BE AN ISSUE!!!')
+                            except: # really no idea
+                                print('REALLY no idea in clean accents')
+                            if error_out: 
+                                import sys; sys.exit()
+                            else: 
+                                errOut = True
+                    else:
+                        mout = m[ind:ind+iend]
+                        accent_inds_out.append(('{} accent', 
+                                                istart+imainbody, 
+                                                iend+imainbody, 
+                                                m[ind+istart:ind+iend]))
+                        imainbody += iend
+                    ind += iend+addone 
+                else: # no accents found in remaining string -- just increase
+                    mout += m[ind:]
+                    ind=len(m)
+                    imainbody += len(mout)
+
+            main_body_here2.append( (mout, mt) )
+        else:
+            main_body_here2.append( (m,mt) )
+
+    # replace the whole shebang
+    if not return_is_accent_flag:
+        if error_out:
+            return main_body_here2
+        else:
+            return main_body_here2, errOut
+    else:
+        if error_out:
+            return accent_inds_out
+        else:
+            return accent_inds_out, errOut
+        
+
+# in *theory* only want to do in document portion alone? not sure yet...
+def clean_accents(document, verbose = False):
+    document_clean, err_accent = clean_accents_splits([[document,'']],verbose=verbose)
+    return document_clean[0][0], err_accent

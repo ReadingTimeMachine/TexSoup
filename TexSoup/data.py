@@ -1158,6 +1158,8 @@ class TexText(TexExpr, str):
         'asdf'
         """
         return repr(self._text)
+    
+   #### def tokenize_words(self): # JPN -- tokenizes te
 
 
 #############
