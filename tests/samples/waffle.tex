@@ -6,6 +6,9 @@
 \newcommand{\bee}[1]{\begin{equation}\label{e:#1}}
 \newcommand{\eee}{\end{equation}}
 
+\newcommand{\beee}[2]{\begin{equation}\label{e:#1} #2}
+\newcommand{\eeee}{\end{equation}}
+
 
 \def \etal {{\em et al.}}
 
@@ -49,6 +52,10 @@ Sometimes I like to write with weird commands like Naiman \etal\ which can make 
 \bee{lenseq}
     A(\xi) = \frac12\left(\xi+\frac1\xi\right),
 \eee
+
+\beee{lenseq2}{A(x)=5}\eeee
+
+Getting some refs in \ref{lenseq} and \ref{lenseq2}.
 
 
 \end{document}
