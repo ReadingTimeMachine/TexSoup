@@ -455,12 +455,13 @@ def find_args_newenvironments(newenvironments, error_out = False, verbose =False
     
 
     
-def generate_find_replace_newcommands(args_newcommands, verbose=False):
+def generate_find_replace_newcommands(args_new, arg_type = 'newcommand', verbose=False):
     # go through and find if there is begin/end in there
     # note: at this point all beginnings/endings should be fixed
     find_replace = []
     comments = []
-    for ic,nc in enumerate(args_newcommands):
+    error = [False]
+    for ic,nc in enumerate(args_new):
         if nc == 'error':
             continue
         n,fn,i1,i2,nArgs = nc
@@ -474,6 +475,8 @@ def generate_find_replace_newcommands(args_newcommands, verbose=False):
                 if not err:
                     cmd = fn[i:][ind1+1:ind2-1]
                     find_replace.append((n,cmd,nArgs))
+                else:
+                    error = [True, 'error finding closing brackets for ' + arg_type]
                 comments.append(fn)
 
             elif '\\end' in fn and not ('\\begin' in fn):
@@ -485,21 +488,46 @@ def generate_find_replace_newcommands(args_newcommands, verbose=False):
                 if not err:
                     cmd = fn[i:][ind1+1:ind2-1]
                     find_replace.append((n,cmd,nArgs))
+                else:
+                    error = [True, 'error finding closing brackets for '+arg_type]
+
                 comments.append(fn)
             elif '\\def' in fn: # def statement
                 pass
             else: # have both
-                print('have both')
-                import sys; sys.exit()
+                if verbose: print('have both begin/end in a '+arg_type+', this is not supported')
+                #import sys; sys.exit()
+                error = [True,'have both begin/end in a '+arg_type]
         else:
             find_replace.append((n,fn,nArgs))
             comments.append(fn)  
-    return comments, find_replace
+    return comments, find_replace, error
     
-def replace_newcommands(text, args_newcommands, verbose = False, replace_comments = True):
     
-    comments, find_replace = generate_find_replace_newcommands(args_newcommands, 
-                                                               verbose=verbose)
+def replace_newcommands_and_newenvironments(text, args_newcommands, args_newenvironments, 
+                                            verbose = False, replace_comments = True):
+    
+    error = [False]
+    warnings = []
+    # for new commands, actually error out
+    comments, find_replace, error = generate_find_replace_newcommands(args_newcommands, 
+                                                               verbose=verbose,arg_type = 'newcommand')
+    # for environments, just add to warnings
+    comments_ne, find_replace_ne, error_ne = generate_find_replace_newcommands(args_newenvironments, 
+                                                               verbose=verbose,arg_type = 'newenvironments')
+    if error_ne[0]:
+        warnings.append('NEW ENV: ' + error_ne[1])
+        
+    # check for inputs in environments, not supported
+    for instr,outstr in find_replace_ne:
+        if '#' in outstr:
+            if verbose:
+                print('input to new environment, not supported')
+            error = [True, 'input to new environment, not supported']
+    
+    
+    if error[0]: # have an error, just return
+        return '', error, warnings
 
     # find/replace -- require a whitespace after
     for instr, outstr,nArgs in find_replace:
@@ -555,6 +583,8 @@ def replace_newcommands(text, args_newcommands, verbose = False, replace_comment
                             iend += ind2
                         else: # have an issue, carry on
                             if verbose: print('have issue finding {} for replacement args')
+                            error = [True, 
+                                     'have issue finding {} for replacement args in newcommands']
                             iend += 1
                             break
                         #import sys; sys.exit()
@@ -569,9 +599,10 @@ def replace_newcommands(text, args_newcommands, verbose = False, replace_comment
                         function='',dopen='}',
                         dclose='{',
                        error_out=False)
-                    outstr_mod = outstr_mod[::-1][ind1+1:ind2-1][::-1]
-                    #if nArgs > 1: import sys; sys.exit()
-
+                    if not err:
+                        outstr_mod = outstr_mod[::-1][ind1+1:ind2-1][::-1]
+                    else:
+                        error = [True, 'error in parsing outstr in newcommand replacement']
                     inCommand = False
                     i1 = istart
                     i2 = iend-1
@@ -586,11 +617,13 @@ def replace_newcommands(text, args_newcommands, verbose = False, replace_comment
                     if verbose: 
                         print('args for:', outstr)
                         print(args)
-                    #import sys; sys.exit()
                 else:
                     text_out.append(text[ind:])
                     ind += len(text[ind:])
             text = "".join(text_out)
+            
+    if error[0]:
+        return '', error, warnings
             
     # finally, replace comments
     if verbose: print('')
@@ -600,4 +633,4 @@ def replace_newcommands(text, args_newcommands, verbose = False, replace_comment
             if verbose:
                 print(c, 'gets commented')
 
-    return text
+    return text, error, warnings

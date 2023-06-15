@@ -166,6 +166,7 @@ def read_item(src, tolerance=0):
 
     while src.hasNext():
         if src.peek().category == TC.Escape:
+            print('hi')
             cmd_name, _ = make_read_peek(read_command)(
                 src, 1, skip=1, tolerance=tolerance)
             if cmd_name in ('end', 'item'):
