@@ -452,3 +452,152 @@ def find_args_newenvironments(newenvironments, error_out = False, verbose =False
         return args_env
     else:
         return args_env, err
+    
+
+    
+def generate_find_replace_newcommands(args_newcommands, verbose=False):
+    # go through and find if there is begin/end in there
+    # note: at this point all beginnings/endings should be fixed
+    find_replace = []
+    comments = []
+    for ic,nc in enumerate(args_newcommands):
+        if nc == 'error':
+            continue
+        n,fn,i1,i2,nArgs = nc
+        if nArgs == 0: # no arguements
+            if '\\begin' in fn and not ('\\end' in fn):
+                i = fn.index(n+'}') + len(n+'}')
+                ind1,ind2,err = spc(fn[i:],
+                                function='',dopen='{',
+                                dclose='}',
+                               error_out=False)
+                if not err:
+                    cmd = fn[i:][ind1+1:ind2-1]
+                    find_replace.append((n,cmd,nArgs))
+                comments.append(fn)
+
+            elif '\\end' in fn and not ('\\begin' in fn):
+                i = fn.index(n+'}') + len(n+'}')
+                ind1,ind2,err = spc(fn[i:],
+                                function='',dopen='{',
+                                dclose='}',
+                               error_out=False)
+                if not err:
+                    cmd = fn[i:][ind1+1:ind2-1]
+                    find_replace.append((n,cmd,nArgs))
+                comments.append(fn)
+            elif '\\def' in fn: # def statement
+                pass
+            else: # have both
+                print('have both')
+                import sys; sys.exit()
+        else:
+            find_replace.append((n,fn,nArgs))
+            comments.append(fn)  
+    return comments, find_replace
+    
+def replace_newcommands(text, args_newcommands, verbose = False, replace_comments = True):
+    
+    comments, find_replace = generate_find_replace_newcommands(args_newcommands, 
+                                                               verbose=verbose)
+
+    # find/replace -- require a whitespace after
+    for instr, outstr,nArgs in find_replace:
+        if nArgs == 0: 
+            ind = 0
+            text_out = []
+            search_cmd = re.escape(instr) + '(\\s{1,})'
+
+            while ind < len(text):
+                if re.search(search_cmd, text[ind:]):
+                    istart,iend1 = re.search(search_cmd, text[ind:]).span()
+                    # get the command specifically
+                    _,iend = re.search(re.escape(instr),text[ind:][istart:iend1]).span()
+                    #iend += iend1
+                    i1 = istart
+                    i2 = istart+iend
+                    # make sure we are not in a command
+                    inCommand = False
+                    for n,fn,i1c,i2c,ncc in args_newcommands:
+                        if i1+ind >= i1c and i2+ind <= i2c: # inside
+                            inCommand = True
+
+                    if not inCommand: # not in a command
+                        text_out.append(text[ind:][:istart])
+                        text_out.append(outstr)
+                        ind += i2
+                    else: # in command, move on
+                        ind += i2
+                else: # not in there anymore
+                    text_out.append(text[ind:])
+                    ind += len(text[ind:])
+
+            text = "".join(text_out)
+        else: # has arguments -- need to parse these as well for replacement
+            ind = 0
+            text_out = []
+            search_cmd = re.escape(instr) + r'(\s*){' # include bracket in search
+            while ind < len(text):
+                if re.search(search_cmd, text[ind:]): # start of command
+                    istart,iend = re.search(search_cmd, text[ind:]).span()
+                    args = {} # get all arguments and store their values
+                    err = False
+                    #if icount > 0: import sys; sys.exit()
+                    for ia in range(nArgs): # loop through all expected arguments
+                        # search for matching brakets, starting at starting {
+                        ind1,ind2,err = spc(text[ind+iend-1:],
+                                        function='',dopen='{',
+                                        dclose='}',
+                                       error_out=False)
+                        if not err: # found it!
+                            args[ia+1] = text[ind:][iend-1:][ind1+1:ind2-1]
+                            # now we have to update everything for the next look at args
+                            iend += ind2
+                        else: # have an issue, carry on
+                            if verbose: print('have issue finding {} for replacement args')
+                            iend += 1
+                            break
+                        #import sys; sys.exit()
+                        #if ia>0: import sys; sys.exit()
+                    #import sys; sys.exit()
+                    # replace
+                    outstr_mod = outstr
+                    for k,v in args.items():
+                        outstr_mod = outstr_mod.replace('#'+str(k), v)
+                    # now get just inside part
+                    ind1,ind2,err = spc(outstr_mod[::-1],
+                        function='',dopen='}',
+                        dclose='{',
+                       error_out=False)
+                    outstr_mod = outstr_mod[::-1][ind1+1:ind2-1][::-1]
+                    #if nArgs > 1: import sys; sys.exit()
+
+                    inCommand = False
+                    i1 = istart
+                    i2 = iend-1
+                    for n,fn,i1c,i2c,ncc in args_newcommands:
+                        if i1+ind >= i1c and i2+ind <= i2c: # inside
+                            inCommand = True
+
+                    if not inCommand:      
+                        text_out.append(text[ind:][:istart])
+                        text_out.append(outstr_mod)
+                    ind += iend-1
+                    if verbose: 
+                        print('args for:', outstr)
+                        print(args)
+                    #import sys; sys.exit()
+                else:
+                    text_out.append(text[ind:])
+                    ind += len(text[ind:])
+            text = "".join(text_out)
+            
+    # finally, replace comments
+    if verbose: print('')
+    if replace_comments:
+        for c in comments:
+            text = text.replace(c, '%'+c)
+            if verbose:
+                print(c, 'gets commented')
+
+    return text
