@@ -187,9 +187,11 @@ def parse_soup_after_accents(texout_arr):
                 ik = 1
                 if it+ik < len(texout_arr2)-1: # not at end
                     c = texout_arr2[it+ik][0]
+                    typeNext = texout_arr2[it+ik][1]
                     cout = ''
-                    if c[0] not in whitespace:
-                        while c[0] not in whitespace and it+ik < len(texout_arr2)-1:
+                    if c[0] not in whitespace and (typeNext=='text' or typeNext=='textWithAccent'):
+                        while c[0] not in whitespace and it+ik < len(texout_arr2)-1 \
+                          and (typeNext=='text' or typeNext=='textWithAccent'):
                             c = texout_arr2[it+ik][0]
                             cout += c
                             ik += 1
