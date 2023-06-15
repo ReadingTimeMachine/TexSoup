@@ -3,6 +3,10 @@ from TexSoup.data import TexNamedEnv, TexCmd, TexText, TexMathModeEnv, BraceGrou
 
 from TexSoup.preprocessing import accents, accents_alone
 
+from string import whitespace
+
+
+
 def clean_slash_commands(soup, only_clean_document = True):
     if only_clean_document:
         # combine \command, \ as just \command\
@@ -155,3 +159,56 @@ def parse_soup(soup, tex_doc_accent, verbose=False):
             texout_arr.append((strout, 'others'))
             
     return texout_arr
+
+
+
+def parse_soup_after_accents(texout_arr):
+    # combine accents
+    texout_arr2 = []
+    text = ''
+    for it,(t,ttype) in enumerate(texout_arr):
+        if ttype == 'accent':
+            # what is the ender of the last one?
+            if texout_arr2[-1][0][-1] not in whitespace: # yup, connect the two together
+                texout_arr2[-1] = ((texout_arr2[-1][0]+t,'textWithAccent'))
+            else: # just leave as is
+                texout_arr2.append((t,'textWithAccent'))
+        else:
+            texout_arr2.append((t,ttype))
+
+    # also combine before... 
+    # should probably do this in one loop for efficiency but... you know how it goes
+    texout_arr3 = []
+    skips = 0
+    for it,(t,ttype) in enumerate(texout_arr2):
+        if skips==0:
+            #if it>66: import sys; sys.exit()
+            if ttype == 'textWithAccent': #check after
+                ik = 1
+                if it+ik < len(texout_arr2)-1: # not at end
+                    c = texout_arr2[it+ik][0]
+                    cout = ''
+                    if c[0] not in whitespace:
+                        while c[0] not in whitespace and it+ik < len(texout_arr2)-1:
+                            c = texout_arr2[it+ik][0]
+                            cout += c
+                            ik += 1
+                        texout_arr3.append((t+cout, 'textWithAccent'))
+                        skips = ik-1
+                    else: # have whitespace, should be it's own thing
+                        texout_arr3.append((t,ttype))
+                else:
+                    texout_arr3.append((t,ttype))
+            else:
+                texout_arr3.append((t,ttype))
+        else:
+            skips -= 1
+            
+    return texout_arr3
+
+
+# combine together
+def parse_soup_to_tags(soup, tex_doc_nc, verbose=False):
+    texout_arr = parse_soup(soup,tex_doc_nc,verbose=verbose)
+    texout_arr_out = parse_soup_after_accents(texout_arr)
+    return texout_arr_out
