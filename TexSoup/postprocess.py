@@ -1,5 +1,5 @@
 # post processing utils
-from TexSoup.data import TexNamedEnv, TexCmd, TexText, TexMathModeEnv, BraceGroup
+from TexSoup.data import TexNamedEnv, TexCmd, TexText, TexMathModeEnv, BraceGroup, TexDisplayMathModeEnv, TexDisplayMathEnv
 
 from TexSoup.preprocessing import accents, accents_alone
 
@@ -125,6 +125,12 @@ def parse_soup(soup, tex_doc_accent, verbose=False):
                                     texout_arr[-1] = ((texout_arr[-1][0] + strout, 'accent')) # put together
                                 else: # just a bracket
                                     texout_arr.append((strout,'bracket'))
+                        elif type(ss.expr) == TexDisplayMathModeEnv:
+                            strout = get_replacement_tex(tex_doc_accent, s, is3,ss, verbose=verbose)
+                            texout_arr.append((strout,'displayMath')) 
+                        elif type(ss.expr) == TexDisplayMathEnv:
+                            strout = get_replacement_tex(tex_doc_accent, s, is3,ss, verbose=verbose)
+                            texout_arr.append((strout,'displayMath')) 
                         else: # a command or named environment
                             # special ones
                             if str(ss.expr).strip() == '\\S':
