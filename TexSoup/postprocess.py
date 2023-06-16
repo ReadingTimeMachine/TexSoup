@@ -1,7 +1,16 @@
 # post processing utils
 from TexSoup.data import TexNamedEnv, TexCmd, TexText, TexMathModeEnv, BraceGroup, TexDisplayMathModeEnv, TexDisplayMathEnv
 
-from TexSoup.preprocessing import accents, accents_alone
+#from TexSoup.preprocessing import accents, accents_alone
+#from TexSoup.preprocessing import accents, accents_alone
+# why does this not work???
+accents = ['\\`',"\\'",'\\^','\\"','\\H', '\\~', '\\c', '\\k', 
+           '\\l', '\\=', '\\b', '\\.', '\\d', '\\r', '\\u', 
+           '\\v', '\\t']
+accents_alone = ['\\o', '{\\i}', '\\oe', '\\ae', '\\ss', '\\aa', '\\AA', 
+                '\\O', '\\AE', '\\OE']
+
+
 
 from string import whitespace
 

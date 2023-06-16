@@ -524,10 +524,12 @@ def generate_find_replace_newcommands(args_new, arg_type = 'newcommand', verbose
                 comments.append(fn)
             elif '\\def' in fn: # def statement
                 pass
-            else: # have both
+            elif '\\begin' in fn and '\\end' in fn: # have both
                 if verbose: print('have both begin/end in a '+arg_type+', this is not supported')
                 #import sys; sys.exit()
                 error = [True,'have both begin/end in a '+arg_type]
+            else: # nothing to worry about
+                pass
         else:
             find_replace.append((n,fn,nArgs))
             comments.append(fn)  
@@ -548,12 +550,17 @@ def replace_newcommands_and_newenvironments(text, args_newcommands, args_newenvi
     if error_ne[0]:
         warnings.append('NEW ENV: ' + error_ne[1])
         
-    # check for inputs in environments, not supported
-    for instr,outstr in find_replace_ne:
-        if '#' in outstr:
-            if verbose:
-                print('input to new environment, not supported')
-            error = [True, 'input to new environment, not supported']
+    try:
+        # check for inputs in environments, not supported
+        for instr,outstr in find_replace_ne:
+            if '#' in outstr:
+                if verbose:
+                    print('input to new environment, not supported')
+                error = [True, 'input to new environment, not supported']
+    except:
+        if verbose:
+            print('could not parse find/replace for new environment')
+        error = [True, 'could not parse find/replace for new environment']
     
     
     if error[0]: # have an error, just return
