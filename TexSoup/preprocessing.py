@@ -592,6 +592,7 @@ def replace_newcommands_and_newenvironments(text, args_newcommands, args_newenvi
                         text_out.append(outstr)
                         ind += i2
                     else: # in command, move on
+                        text_out.append(text[ind:][:i2])
                         ind += i2
                 else: # not in there anymore
                     text_out.append(text[ind:])
@@ -650,6 +651,8 @@ def replace_newcommands_and_newenvironments(text, args_newcommands, args_newenvi
                     if not inCommand:      
                         text_out.append(text[ind:][:istart])
                         text_out.append(outstr_mod)
+                    else:
+                        text_out.append(text[ind:iend-1])
                     ind += iend-1
                     if verbose: 
                         print('args for:', outstr)
