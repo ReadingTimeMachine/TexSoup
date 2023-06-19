@@ -530,9 +530,19 @@ def generate_find_replace_newcommands(args_new, arg_type = 'newcommand', verbose
                 error = [True,'have both begin/end in a '+arg_type]
             else: # nothing to worry about
                 pass
-        else:
-            find_replace.append((n,fn,nArgs))
-            comments.append(fn)  
+        else: # has arguments -- only parse if have begin/end
+            if '\\begin' in fn and not ('\\end' in fn):
+                find_replace.append((n,fn,nArgs))
+                comments.append(fn)  
+            elif '\\end' in fn and not ('\\begin' in fn):
+                find_replace.append((n,fn,nArgs))
+                comments.append(fn)  
+            elif '\\begin' in fn and '\\end' in fn: # have both
+                if verbose: print('have both begin/end in a '+arg_type+', this is not supported')
+                #import sys; sys.exit()
+                error = [True,'have both begin/end in a '+arg_type]
+            else: # ignore
+                pass
     return comments, find_replace, error
     
     
