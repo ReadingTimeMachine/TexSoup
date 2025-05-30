@@ -317,7 +317,7 @@ def parse_soup_after_accents(texout_arr):
     return texout_arr3
 
 
-# combine together
+# combine together, etc
 def parse_soup_to_tags(soup, tex_doc_nc, verbose=False):
     #print('parse_soup_to_tags:', 'soup --', str(soup).count(' The key practical difference between both methods'), 'times')
     #print('parse_soup_to_tags:', 'tex --', tex_doc_nc.count(' The key practical difference between both methods'), 'times')
