@@ -224,7 +224,7 @@ def parse_soup_after_accents(texout_arr):
     return texout_arr3
 
 
-# combine together
+# combine together, etc
 def parse_soup_to_tags(soup, tex_doc_nc, verbose=False):
     texout_arr = parse_soup(soup,tex_doc_nc,verbose=verbose)
     texout_arr_out = parse_soup_after_accents(texout_arr)
