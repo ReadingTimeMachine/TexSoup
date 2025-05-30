@@ -42,20 +42,38 @@ def clean_slash_commands(soup, only_clean_document = True):
                             soup.all[iss].all[isss].delete() # delete this node
     return soup
 
+
+#phrase = ' The key practical difference between both methods'
+
 def get_replacement_tex(tex_doc, soup, isss, s, verbose=False, strip=True):
     """
     tex_doc : this is the *original* tex document, NOT the one that generated from the soup
+    soup : the soup from TexSoup
     """
     ind1 = s.position
+    err = False
     if ind1 == -1: ind1 = 0 # newline
     if str(s) not in tex_doc[ind1:]: # has been reformated
         if isss < len(soup.all)-1:
             next_el = soup.all[isss+1]
+            #if phrase in str(next_el):
+            #    print('**** get_replacement_tex:', 'IN next_el 1')
             ind2 = next_el.position
             icount = 1
+            # what happens if next position is -1?
             while ind2 == -1 and icount < len(soup.all)-isss: # for new-lines
+                #print('get_replacement_text: -1 in next_el.postion, solution NOT IMPLEMENTED YET')
+                #return '',True
+                #print('next element:')
+                #print(next_el, ind2)
+                #print('')
                 next_el = soup.all[isss+icount]
-                ind2 = next_el.position
+                #if phrase in str(next_el):
+                #    print('ind2 to start is:', ind2)
+                #    print('**** get_replacement_tex:', 'IN next_el 2')
+                ind2 = next_el.position#-2 # not sure about this 1...
+                #print('DEBUG: check if double/missing!')
+                #print('ind2 after:', ind2)
                 icount+=1
             if icount == len(soup.all)-isss: # hit the end
                 ind2 = len(tex_doc)
@@ -65,23 +83,41 @@ def get_replacement_tex(tex_doc, soup, isss, s, verbose=False, strip=True):
         if strip:
             strout = strout.rstrip()
     else:
+        #if phrase in str(s):
+        #    print('**** get_replacement_tex:', 'IN tex_doc')
+        #    print(str(s))
+            
         strout = str(s)
+
+    #if phrase in str(strout):
+    #    print('')
+    #    print('**** get_replacement_tex:', 'in strout')
+    #    print(str(s))
+    #    print('-------------')
+    #    print(str(strout))
+    #    print('')
+
         
     if verbose:
         print(str(s))
         print('')
         print(strout)
         print('----------------------')
-    return strout
-
+    if err:
+        print('HAS ERROR')
+    return strout, err
 
 def parse_soup(soup, tex_doc_accent, verbose=False):
     icount = 0
     texout_arr = []
     errorAll = False
+    err = False
     for isss, s in enumerate(soup.all):
+        #if phrase in str(s):
+        #    print('parse_soup:', 'in s', str(s).count(phrase))
+            
         if type(s.expr) == TexNamedEnv: # parts of the text
-            if 'begin' in s.expr.begin and 'document' in s.expr.begin:
+            if 'begin' in s.expr.begin and 'document' in s.expr.begin: # beginning and end of document
                 # add preamble
                 #texout_arr.append((preamble,'preamble'))
                 texout_arr.append(('\\begin{document}\n','beginDoc'))
@@ -90,34 +126,62 @@ def parse_soup(soup, tex_doc_accent, verbose=False):
                 except:
                     errorAll = True
                 if not errorAll:
-                    for is3,ss in enumerate(s.all):  
+                    for is3,ss in enumerate(s.all):  # go through document
+                        #if phrase in str(ss):
+                        #    print('parse_soup:', 'in ss', str(ss).count(phrase))
                         if type(ss.expr) == TexText: # mark text words
-                            strout = get_replacement_tex(tex_doc_accent, s, is3,ss, verbose=verbose)
+                            #if phrase in str(ss):
+                            #    print('parse_soup: IS TEXT', 'in ss', str(ss).count(phrase))
+                            strout,err = get_replacement_tex(tex_doc_accent, s, is3,ss, verbose=verbose)
+                            if err:
+                                return '',True
+                            #if phrase in str(ss):
+                            #    print('parse_soup: strout 1', 'in ss', strout.count(phrase))
                             if len(strout.strip()) > 0: # not just white-space
                                 if strout.lstrip()[0] != '%': # not a comment:
                                     if str(ss.expr) in accents_alone: # accent alone
-                                        strout = get_replacement_tex(tex_doc_accent, s, is3,ss, verbose=verbose)
+                                        #print('here 1')
+                                        strout,err = get_replacement_tex(tex_doc_accent, s, is3,ss, verbose=verbose)
+                                        if err:
+                                            return '', err
                                         texout_arr.append((strout, 'accent'))
                                     elif texout_arr[-1][0] in accents:
-                                        strout = get_replacement_tex(tex_doc_accent, s, is3,ss, verbose=verbose)
+                                        #print('here 2')
+                                        strout,err = get_replacement_tex(tex_doc_accent, s, is3,ss, verbose=verbose)
+                                        if err:
+                                            return '', err
                                         texout_arr[-1] = ((texout_arr[-1][0] + strout, 'accent')) # put together
                                     else:
+                                        #if phrase in str(ss):
+                                        #    print('parse_soup: strout 2', strout.count(phrase))
+                                        #    print('what is strout', strout)
+
                                         texout_arr.append((strout, 'text'))
                                 else: # for all comments
                                     texout_arr.append((strout, 'comment'))
                             else: # just whitespace
                                 texout_arr.append((strout,'whitespace'))
                         elif 'cite' in ss.name: # citations
-                            strout = get_replacement_tex(tex_doc_accent, s, is3,ss, verbose=verbose)
+                            strout,err = get_replacement_tex(tex_doc_accent, s, is3,ss, verbose=verbose)
+                            if err:
+                                return '',err
                             texout_arr.append((strout, 'citation'))
                         elif 'ref' in ss.name: # references
-                            strout = get_replacement_tex(tex_doc_accent, s, is3,ss, verbose=verbose)
+                            strout,err = get_replacement_tex(tex_doc_accent, s, is3,ss, verbose=verbose)
+                            if err:
+                                return '',err
                             texout_arr.append((strout, 'reference'))
                         elif type(ss.expr) == TexMathModeEnv: # inline math
-                            strout = get_replacement_tex(tex_doc_accent, s, is3,ss, verbose=verbose)
+                            #if isss == 197:
+                            #    print('yes math mode')
+                            strout,err = get_replacement_tex(tex_doc_accent, s, is3,ss, verbose=verbose)
+                            if err:
+                                return '',err
                             texout_arr.append((strout,'inline'))
                         elif type(ss.expr) == BraceGroup:
-                            strout = get_replacement_tex(tex_doc_accent, s, is3,ss, verbose=verbose)
+                            strout,err = get_replacement_tex(tex_doc_accent, s, is3,ss, verbose=verbose)
+                            if err:
+                                return '',err
                             isAccent = False
                             for a in accents:
                                 if a in strout:
@@ -135,45 +199,74 @@ def parse_soup(soup, tex_doc_accent, verbose=False):
                                 else: # just a bracket
                                     texout_arr.append((strout,'bracket'))
                         elif type(ss.expr) == TexDisplayMathModeEnv:
-                            strout = get_replacement_tex(tex_doc_accent, s, is3,ss, verbose=verbose)
+                            strout,err = get_replacement_tex(tex_doc_accent, s, is3,ss, verbose=verbose)
+                            if err:
+                                return '',err
                             texout_arr.append((strout,'displayMath')) 
                         elif type(ss.expr) == TexDisplayMathEnv:
-                            strout = get_replacement_tex(tex_doc_accent, s, is3,ss, verbose=verbose)
+                            strout,err = get_replacement_tex(tex_doc_accent, s, is3,ss, verbose=verbose)
+                            if err:
+                                return '',err
                             texout_arr.append((strout,'displayMath')) 
                         else: # a command or named environment
                             # special ones
                             if str(ss.expr).strip() == '\\S':
-                                strout = get_replacement_tex(tex_doc_accent, s, is3,ss, verbose=verbose)
+                                strout,err = get_replacement_tex(tex_doc_accent, s, is3,ss, verbose=verbose)
+                                if err:
+                                    return '',err
                                 texout_arr.append((strout, 'S-command'))
                             elif type(ss.expr) == TexNamedEnv:
-                                strout = get_replacement_tex(tex_doc_accent, s, is3,ss, verbose=verbose)
+                                #if phrase in str(ss):
+                                #    print('here now in named env')
+                                strout,err = get_replacement_tex(tex_doc_accent, s, is3,ss, verbose=verbose)
+                                if err:
+                                    return '',err
+                                #if phrase in strout:
+                                #    print('isss=', isss, 'is3=', is3)
+                                #    print('here now in named env -- but after')
+                                #    print(str(ss))
+                                #    print('-----------')
+                                #    print(strout)
+                                #    print('')
                                 #if 'eqnarray' in str(ss): import sys; sys.exit()
                                 texout_arr.append((strout, 'namedEnv'))
                             elif str(ss.expr) in accents_alone: # accent alone
-                                strout = get_replacement_tex(tex_doc_accent, s, is3,ss, verbose=verbose)
+                                strout,err = get_replacement_tex(tex_doc_accent, s, is3,ss, verbose=verbose)
+                                if err:
+                                    return '',err
                                 texout_arr.append((strout, 'accent'))
                             elif texout_arr[-1][0] in accents:
-                                strout = get_replacement_tex(tex_doc_accent, s, is3,ss, verbose=verbose)
+                                strout,err = get_replacement_tex(tex_doc_accent, s, is3,ss, verbose=verbose)
+                                if err:
+                                    return '',err
                                 texout_arr[-1] = ((texout_arr[-1][0] + strout, 'accent')) # put together
                                 #import sys; sys.exit()
                             else:
-                                strout = get_replacement_tex(tex_doc_accent, s, is3,ss, verbose=verbose)
+                                strout,err = get_replacement_tex(tex_doc_accent, s, is3,ss, verbose=verbose)
+                                if err:
+                                    return '',err
                                 texout_arr.append((strout,'commandOrBracket'))
 
-                else:
+                else: # some error has happend in getting s-all
+                    if verbose: print('soup error encountered')
+                    texout_arr.append((str(ss),'soup error'))
                     continue
                 texout_arr.append(('\\end{document}\n','endDoc'))
             else: # something else -- outside of document
                 if verbose: print('not in begin/end!', s)
                 #import sys; sys.exit()
                 ##errorAll = True
-                strout = get_replacement_tex(tex_doc_accent, soup, isss,s, verbose=verbose)
+                strout,err = get_replacement_tex(tex_doc_accent, soup, isss,s, verbose=verbose)
+                if err:
+                    return '',err
                 texout_arr.append((strout,'outside'))
         else: # typically \usepackage commands, \documentclass, etc
-            strout = get_replacement_tex(tex_doc_accent, soup, isss,s, verbose=verbose)
-            texout_arr.append((strout, 'others'))
+            strout,err = get_replacement_tex(tex_doc_accent, soup, isss,s, verbose=verbose)
+            if err:
+                return '', err
+            texout_arr.append((strout, 'others'))         
             
-    return texout_arr
+    return texout_arr,err
 
 
 
@@ -226,6 +319,24 @@ def parse_soup_after_accents(texout_arr):
 
 # combine together
 def parse_soup_to_tags(soup, tex_doc_nc, verbose=False):
-    texout_arr = parse_soup(soup,tex_doc_nc,verbose=verbose)
+    #print('parse_soup_to_tags:', 'soup --', str(soup).count(' The key practical difference between both methods'), 'times')
+    #print('parse_soup_to_tags:', 'tex --', tex_doc_nc.count(' The key practical difference between both methods'), 'times')
+
+    err = False
+    texout_arr,err = parse_soup(soup,tex_doc_nc,verbose=verbose)
+    if err:
+        if verbose:
+            print('ERROR: parse_soup -- erroring out')
+            return '',True
+    #count = 0
+    #for t,tt in texout_arr:
+    #    if ' The key practical difference between both methods' in t:
+    #        count += 1
+    #print('after parse soup:', count, 'times')
     texout_arr_out = parse_soup_after_accents(texout_arr)
-    return texout_arr_out
+    count = 0
+    #for t,tt in texout_arr_out:
+    #    if ' The key practical difference between both methods' in t:
+    #        count += 1
+    #print('after parse soup after accents:', count, 'times')
+    return texout_arr_out, err
