@@ -60,20 +60,16 @@ def get_replacement_tex(tex_doc, soup, isss, s, verbose=False, strip=True):
             #    print('**** get_replacement_tex:', 'IN next_el 1')
             ind2 = next_el.position
             icount = 1
-            # what happens if next position is -1?
-            while ind2 == -1 and icount < len(soup.all)-isss: # for new-lines
-                #print('get_replacement_text: -1 in next_el.postion, solution NOT IMPLEMENTED YET')
-                #return '',True
-                #print('next element:')
-                #print(next_el, ind2)
-                #print('')
+            #icount = 0 # should this be 0 or 1???
+            # what happens if next position is -1? 
+            while (ind2 == -1 or ind2 is None) and icount < len(soup.all)-isss: # for new-lines
                 next_el = soup.all[isss+icount]
-                #if phrase in str(next_el):
-                #    print('ind2 to start is:', ind2)
-                #    print('**** get_replacement_tex:', 'IN next_el 2')
-                ind2 = next_el.position#-2 # not sure about this 1...
-                #print('DEBUG: check if double/missing!')
-                #print('ind2 after:', ind2)
+                ind2 = next_el.position # this should be starting character of next element
+                if len(str(next_el).strip()) > 0: # not just whitespace
+                    if (str(next_el)[0] == '\n') or (str(next_el)[0] == '\t') or (str(next_el)[0] == '\r'): # starts with a newline
+                        # update the count for extra
+                        icount += 1
+                        ind2 = soup.all[isss+icount].position - len(str(next_el))
                 icount+=1
             if icount == len(soup.all)-isss: # hit the end
                 ind2 = len(tex_doc)
@@ -322,12 +318,18 @@ def parse_soup_to_tags(soup, tex_doc_nc, verbose=False):
     #print('parse_soup_to_tags:', 'soup --', str(soup).count(' The key practical difference between both methods'), 'times')
     #print('parse_soup_to_tags:', 'tex --', tex_doc_nc.count(' The key practical difference between both methods'), 'times')
 
+    # # return before for debugging
+    # print("CHANGE BACK HERE!!")
+    # return tex_doc_nc, False
+
     err = False
     texout_arr,err = parse_soup(soup,tex_doc_nc,verbose=verbose)
     if err:
         if verbose:
             print('ERROR: parse_soup -- erroring out')
             return '',True
+    # print('ALSO CHANGE HERE!')
+    # return texout_arr,err
     #count = 0
     #for t,tt in texout_arr:
     #    if ' The key practical difference between both methods' in t:
