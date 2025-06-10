@@ -492,7 +492,7 @@ def find_args_newenvironments(newenvironments, error_out = False, verbose =False
         return args_env, err
     
 
-    
+**HERE** issue with begin/end ones
 def generate_find_replace_newcommands_old(args_new, arg_type = 'newcommand', verbose=False):
     """
     The purpose of this function (I think) is to loop and replace newcommands that 
@@ -571,12 +571,12 @@ def generate_find_replace_newcommands_old(args_new, arg_type = 'newcommand', ver
             else: # ignore
                 pass
 
-    print('')
-    print("comments:")
-    print(comments)
-    print('find_replace:')
-    print(find_replace)
-    print('')
+    # print('')
+    # print("comments:")
+    # print(comments)
+    # print('find_replace:')
+    # print(find_replace)
+    # print('')
     return comments, find_replace, error
 
 
@@ -594,8 +594,8 @@ def generate_find_replace_newcommands(args_new, arg_type = 'newcommand', verbose
     comments = []
     error = [False]
     #print('hi1')
-    print('args new at top:')
-    print(args_new)
+    # print('args new at top:')
+    # print(args_new)
     for ic,nc in enumerate(args_new):
         #print('nc=', nc)
         if nc[0] == 'error':
@@ -610,17 +610,27 @@ def generate_find_replace_newcommands(args_new, arg_type = 'newcommand', verbose
             if ('\\begin' in fn and not ('\\end' in fn)) or \
                  ('\\end' in fn and not ('\\begin' in fn)) or \
                     ('\\begin' in fn and '\\end' in fn):
-                i = fn.index(n+'}') + len(n+'}') # end of new command definition
-                # find replacement indecies
-                ind1,ind2,err = spc(fn[i:],
-                                function='',dopen='{',
-                                dclose='}',
-                               error_out=False)
+                try:
+                    i = fn.index(n+'}') + len(n+'}') # end of new command definition
+                    err = False
+                except Exception as e:
+                    if verbose:
+                        print('cant find brackets')
+                        print(str(e))
+                        error = [True, 'bracket finding for fn ' + arg_type]
+                        err = True
+
                 if not err:
-                    cmd = fn[i:][ind1+1:ind2-1]
-                    find_replace.append((n,cmd,nArgs))
-                else:
-                    error = [True, 'error finding closing brackets for ' + arg_type]
+                    # find replacement indecies
+                    ind1,ind2,err = spc(fn[i:],
+                                    function='',dopen='{',
+                                    dclose='}',
+                                error_out=False)
+                    if not err:
+                        cmd = fn[i:][ind1+1:ind2-1]
+                        find_replace.append((n,cmd,nArgs))
+                    else:
+                        error = [True, 'error finding closing brackets for ' + arg_type]
                 comments.append(fn)
             elif '\\def' in fn: # def statement
                 pass
@@ -636,12 +646,12 @@ def generate_find_replace_newcommands(args_new, arg_type = 'newcommand', verbose
             else: # ignore
                 pass
 
-    print('')
-    print("comments:")
-    print(comments)
-    print('find_replace:')
-    print(find_replace)
-    print('')
+    # print('')
+    # print("comments:")
+    # print(comments)
+    # print('find_replace:')
+    # print(find_replace)
+    # print('')
     return comments, find_replace, error
 
     
