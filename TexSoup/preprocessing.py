@@ -198,6 +198,7 @@ def get_newcommands_and_newenvs(text,
     # -------------- search for new commands/environments ---------
     ind = 0
     news = []
+    #error = []
     while ind<len(text):
         s = re.search(search, text[ind:])
         if s:
@@ -217,7 +218,9 @@ def get_newcommands_and_newenvs(text,
             if not err:
                 if ind1==-1 or ind2==-1:
                     err = True
-                    error.append( ('error') )
+                    #error.append( ('error') )
+                    newcommands.append( ('error','','',''))
+                    #print('hihi1')
                     continue
                 cc = "".join(text[start:][ind1:ind2].split())
                 #cc = text[start:][ind1:ind2].replace(' ','')
@@ -246,7 +249,8 @@ def get_newcommands_and_newenvs(text,
                             nc2 = text[start:start+ind22+ind2]
                             newcommands.append( (ncc,nc2,start,start+ind2+ind22) )
                         else:
-                            newcommands.append( ('error'))
+                            newcommands.append( ('error','','',''))
+                            #print('hihi2')
                             continue
                     elif char == '\\': # weirder - \newcommand\foo[]{}
                         # get out interior
@@ -267,9 +271,9 @@ def get_newcommands_and_newenvs(text,
                         ncc = '\\'+nc2[len(nc2)-i3:]                        
                         newcommands.append( (ncc,nc,start,start+ind2) )
                 else:
-                    newcommands.append(('error'))
+                    newcommands.append(('error','','',''))
+                    #print('hihi33')
                     continue
-
 
         elif '\\def' in c:
             # check one thing -- for the whole start to spell out define
@@ -290,8 +294,11 @@ def get_newcommands_and_newenvs(text,
                 ncc = '\\'+nc2[len(nc2)-i3:]
                 newcommands.append( (ncc,nc,start,start+ind2) )
             else:
-                newcommands.append(('error'))
+                newcommands.append(('error','','',''))
+                #print('hihi44')
                 continue
+        # see if newcommands
+        #print("newcommands here:", newcommands)    
 
 
     # also grab possible environments
@@ -303,6 +310,7 @@ def get_newcommands_and_newenvs(text,
 
     if errEnv:
         newcommands.append(('error'))
+        print('hihi444')
         # HERE continue        
 
     newenvironments = []
@@ -407,7 +415,7 @@ def find_args_newcommands(newcommands, error_out = False, verbose=False):
                             args[ia][-1] = int(i2) 
                         except:
                             if verbose:
-                                print('error in trying to get args:', a, ff)
+                                print('error in trying to get args:', a)#, ff)
                             errArgs = [True,a]
                     else:
                         args[ia][-1] = a[-1]+1
@@ -485,16 +493,26 @@ def find_args_newenvironments(newenvironments, error_out = False, verbose =False
     
 
     
-def generate_find_replace_newcommands(args_new, arg_type = 'newcommand', verbose=False):
+def generate_find_replace_newcommands_old(args_new, arg_type = 'newcommand', verbose=False):
+    """
+    The purpose of this function (I think) is to loop and replace newcommands that 
+     have a \begin or \end command with the actual text.  This helps with TexSoup 
+     processing into environments.
+    """
     # go through and find if there is begin/end in there
     # note: at this point all beginnings/endings should be fixed
     find_replace = []
     comments = []
     error = [False]
+    #print('hi1')
+    # print('args new at top:')
+    # print(args_new)
     for ic,nc in enumerate(args_new):
-        if nc == 'error':
+        #print('nc=', nc)
+        if nc[0] == 'error':
             continue
         n,fn,i1,i2,nArgs = nc
+        #print('hi2')
         if nArgs == 0: # no arguements
             if '\\begin' in fn and not ('\\end' in fn):
                 i = fn.index(n+'}') + len(n+'}')
@@ -525,11 +543,17 @@ def generate_find_replace_newcommands(args_new, arg_type = 'newcommand', verbose
             elif '\\def' in fn: # def statement
                 pass
             elif '\\begin' in fn and '\\end' in fn: # have both
-                if verbose: print('have both begin/end in a '+arg_type+', this is not supported')
+                # here
+
+                if verbose: 
+                    print('have both begin/end in a '+arg_type+', this is not supported')
+                    print('(1) thingy is:', fn)
+                    print('')
                 #import sys; sys.exit()
                 error = [True,'have both begin/end in a '+arg_type]
             else: # nothing to worry about
                 pass
+            #print('hi3')
         else: # has arguments -- only parse if have begin/end
             if '\\begin' in fn and not ('\\end' in fn):
                 find_replace.append((n,fn,nArgs))
@@ -538,12 +562,88 @@ def generate_find_replace_newcommands(args_new, arg_type = 'newcommand', verbose
                 find_replace.append((n,fn,nArgs))
                 comments.append(fn)  
             elif '\\begin' in fn and '\\end' in fn: # have both
-                if verbose: print('have both begin/end in a '+arg_type+', this is not supported')
+                if verbose: 
+                    print('have both begin/end in a '+arg_type+', this is not supported')
+                    print('(2) thingy is:', fn)
+                    print('')
                 #import sys; sys.exit()
                 error = [True,'have both begin/end in a '+arg_type]
             else: # ignore
                 pass
+
+    print('')
+    print("comments:")
+    print(comments)
+    print('find_replace:')
+    print(find_replace)
+    print('')
     return comments, find_replace, error
+
+
+
+
+def generate_find_replace_newcommands(args_new, arg_type = 'newcommand', verbose=False):
+    """
+    The purpose of this function (I think) is to loop and replace newcommands that 
+     have a \begin or \end command with the actual text.  This helps with TexSoup 
+     processing into environments.
+    """
+    # go through and find if there is begin/end in there
+    # note: at this point all beginnings/endings should be fixed
+    find_replace = []
+    comments = []
+    error = [False]
+    #print('hi1')
+    print('args new at top:')
+    print(args_new)
+    for ic,nc in enumerate(args_new):
+        #print('nc=', nc)
+        if nc[0] == 'error':
+            continue
+        # n = name of command
+        # fn = LaTeX of new command
+        # i1,i2 = where new command is defined
+        # nArgs = number of arguments
+        n,fn,i1,i2,nArgs = nc
+        #print('hi2')
+        if nArgs == 0: # no arguements
+            if ('\\begin' in fn and not ('\\end' in fn)) or \
+                 ('\\end' in fn and not ('\\begin' in fn)) or \
+                    ('\\begin' in fn and '\\end' in fn):
+                i = fn.index(n+'}') + len(n+'}') # end of new command definition
+                # find replacement indecies
+                ind1,ind2,err = spc(fn[i:],
+                                function='',dopen='{',
+                                dclose='}',
+                               error_out=False)
+                if not err:
+                    cmd = fn[i:][ind1+1:ind2-1]
+                    find_replace.append((n,cmd,nArgs))
+                else:
+                    error = [True, 'error finding closing brackets for ' + arg_type]
+                comments.append(fn)
+            elif '\\def' in fn: # def statement
+                pass
+            else: # nothing to worry about
+                pass
+            #print('hi3')
+        else: # has arguments -- only parse if have begin/end
+            if ('\\begin' in fn and not ('\\end' in fn)) or \
+                ('\\end' in fn and not ('\\begin' in fn)) or \
+                    ('\\begin' in fn and '\\end' in fn):
+                find_replace.append((n,fn,nArgs))
+                comments.append(fn)  
+            else: # ignore
+                pass
+
+    print('')
+    print("comments:")
+    print(comments)
+    print('find_replace:')
+    print(find_replace)
+    print('')
+    return comments, find_replace, error
+
     
     
 def replace_newcommands_and_newenvironments(text, args_newcommands, args_newenvironments, 
@@ -578,7 +678,7 @@ def replace_newcommands_and_newenvironments(text, args_newcommands, args_newenvi
 
     # find/replace -- require a whitespace after
     for instr, outstr,nArgs in find_replace:
-        if nArgs == 0: 
+        if nArgs == 0: # now arguments
             ind = 0
             text_out = []
             search_cmd = re.escape(instr) + '(\\s{1,})'
