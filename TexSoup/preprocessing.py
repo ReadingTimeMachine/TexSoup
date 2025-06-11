@@ -492,7 +492,6 @@ def find_args_newenvironments(newenvironments, error_out = False, verbose =False
         return args_env, err
     
 
-**HERE** issue with begin/end ones
 def generate_find_replace_newcommands_old(args_new, arg_type = 'newcommand', verbose=False):
     """
     The purpose of this function (I think) is to loop and replace newcommands that 
@@ -581,7 +580,7 @@ def generate_find_replace_newcommands_old(args_new, arg_type = 'newcommand', ver
 
 
 
-
+#**HERE** issue with begin/end ones
 def generate_find_replace_newcommands(args_new, arg_type = 'newcommand', verbose=False):
     """
     The purpose of this function (I think) is to loop and replace newcommands that 
@@ -608,8 +607,7 @@ def generate_find_replace_newcommands(args_new, arg_type = 'newcommand', verbose
         #print('hi2')
         if nArgs == 0: # no arguements
             if ('\\begin' in fn and not ('\\end' in fn)) or \
-                 ('\\end' in fn and not ('\\begin' in fn)) or \
-                    ('\\begin' in fn and '\\end' in fn):
+                 ('\\end' in fn and not ('\\begin' in fn)):
                 try:
                     i = fn.index(n+'}') + len(n+'}') # end of new command definition
                     err = False
@@ -629,9 +627,23 @@ def generate_find_replace_newcommands(args_new, arg_type = 'newcommand', verbose
                     if not err:
                         cmd = fn[i:][ind1+1:ind2-1]
                         find_replace.append((n,cmd,nArgs))
+                        print("all ok: n, cmd")
+                        print(n)
+                        print(cmd)
+                        print('')
                     else:
                         error = [True, 'error finding closing brackets for ' + arg_type]
                 comments.append(fn)
+            elif  ('\\begin' in fn and '\\end' in fn): # has both beginnings and endings
+                # outputs are:
+                # n = newcommand text (already found)
+                # cmd = full input of new command (from fn)
+                # nArgs = how many arguments there are (already found)
+                print('1')
+                print('n:', n)
+                print('fn:', fn)
+                print('nArgs:', nArgs)
+                import sys; sys.exit()
             elif '\\def' in fn: # def statement
                 pass
             else: # nothing to worry about
@@ -639,10 +651,23 @@ def generate_find_replace_newcommands(args_new, arg_type = 'newcommand', verbose
             #print('hi3')
         else: # has arguments -- only parse if have begin/end
             if ('\\begin' in fn and not ('\\end' in fn)) or \
-                ('\\end' in fn and not ('\\begin' in fn)) or \
-                    ('\\begin' in fn and '\\end' in fn):
+                ('\\end' in fn and not ('\\begin' in fn)) :
                 find_replace.append((n,fn,nArgs))
                 comments.append(fn)  
+                print("all ok 2: n, cmd")
+                print(n)
+                print(fn)
+                print('')
+            elif ('\\begin' in fn and '\\end' in fn):
+                # outputs are:
+                # n = newcommand text (already found)
+                # cmd = full input of new command (from fn)
+                # nArgs = how many arguments there are (already found)
+                print('2')
+                print('n:', n)
+                print('fn:', fn)
+                print('nArgs:', nArgs)
+                import sys; sys.exit()
             else: # ignore
                 pass
 
