@@ -617,7 +617,7 @@ def generate_find_replace_newcommands(args_new, arg_type = 'newcommand', verbose
                         print('cant find brackets')
                         print(str(e))
                         error = [True, 'bracket finding for fn ' + arg_type]
-                        err = True
+                    err = True
 
                 if not err:
                     # find replacement indecies
@@ -628,10 +628,10 @@ def generate_find_replace_newcommands(args_new, arg_type = 'newcommand', verbose
                     if not err:
                         cmd = fn[i:][ind1+1:ind2-1]
                         find_replace.append((n,cmd,nArgs))
-                        print("all ok: n, cmd")
-                        print(n)
-                        print(cmd)
-                        print('')
+                        # print("all ok: n, cmd")
+                        # print(n)
+                        # print(cmd)
+                        # print('')
                     else:
                         error = [True, 'error finding closing brackets for ' + arg_type]
                 comments.append(fn)
