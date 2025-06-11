@@ -607,7 +607,8 @@ def generate_find_replace_newcommands(args_new, arg_type = 'newcommand', verbose
         #print('hi2')
         if nArgs == 0: # no arguements
             if ('\\begin' in fn and not ('\\end' in fn)) or \
-                 ('\\end' in fn and not ('\\begin' in fn)):
+                 ('\\end' in fn and not ('\\begin' in fn)) or \
+                    ('\\begin' in fn and '\\end' in fn):
                 try:
                     i = fn.index(n+'}') + len(n+'}') # end of new command definition
                     err = False
@@ -634,16 +635,16 @@ def generate_find_replace_newcommands(args_new, arg_type = 'newcommand', verbose
                     else:
                         error = [True, 'error finding closing brackets for ' + arg_type]
                 comments.append(fn)
-            elif  ('\\begin' in fn and '\\end' in fn): # has both beginnings and endings
-                # outputs are:
-                # n = newcommand text (already found)
-                # cmd = full input of new command (from fn)
-                # nArgs = how many arguments there are (already found)
-                print('1')
-                print('n:', n)
-                print('fn:', fn)
-                print('nArgs:', nArgs)
-                import sys; sys.exit()
+            # elif  ('\\begin' in fn and '\\end' in fn): # has both beginnings and endings
+            #     # outputs are:
+            #     # n = newcommand text (already found)
+            #     # cmd = full input of new command (from fn)
+            #     # nArgs = how many arguments there are (already found)
+            #     print('1')
+            #     print('n:', n)
+            #     print('fn:', fn)
+            #     print('nArgs:', nArgs)
+            #     import sys; sys.exit()
             elif '\\def' in fn: # def statement
                 pass
             else: # nothing to worry about
@@ -651,23 +652,24 @@ def generate_find_replace_newcommands(args_new, arg_type = 'newcommand', verbose
             #print('hi3')
         else: # has arguments -- only parse if have begin/end
             if ('\\begin' in fn and not ('\\end' in fn)) or \
-                ('\\end' in fn and not ('\\begin' in fn)) :
+                ('\\end' in fn and not ('\\begin' in fn)) or \
+                    ('\\begin' in fn and '\\end' in fn):
                 find_replace.append((n,fn,nArgs))
                 comments.append(fn)  
-                print("all ok 2: n, cmd")
-                print(n)
-                print(fn)
-                print('')
-            elif ('\\begin' in fn and '\\end' in fn):
-                # outputs are:
-                # n = newcommand text (already found)
-                # cmd = full input of new command (from fn)
-                # nArgs = how many arguments there are (already found)
-                print('2')
-                print('n:', n)
-                print('fn:', fn)
-                print('nArgs:', nArgs)
-                import sys; sys.exit()
+                # print("all ok 2: n, cmd")
+                # print(n)
+                # print(fn)
+                # print('')
+            # elif ('\\begin' in fn and '\\end' in fn):
+            #     # outputs are:
+            #     # n = newcommand text (already found)
+            #     # cmd = full input of new command (from fn)
+            #     # nArgs = how many arguments there are (already found)
+            #     print('2')
+            #     print('n:', n)
+            #     print('fn:', fn)
+            #     print('nArgs:', nArgs)
+            #     import sys; sys.exit()
             else: # ignore
                 pass
 
@@ -712,7 +714,7 @@ def replace_newcommands_and_newenvironments(text, args_newcommands, args_newenvi
         return '', error, warnings
 
     # find/replace -- require a whitespace after
-    for instr, outstr,nArgs in find_replace:
+    for instr, outstr,nArgs in find_replace: # newcommand to replace, replace with, # args
         if nArgs == 0: # now arguments
             ind = 0
             text_out = []
@@ -814,7 +816,32 @@ def replace_newcommands_and_newenvironments(text, args_newcommands, args_newenvi
     if verbose: print('')
     if replace_comments:
         for c in comments:
-            text = text.replace(c, '%'+c)
+            ind1 = text.index(c)
+            ind2 = ind1 + len(c)
+            text_before = text[:ind1]
+            text_middle = text[ind1:ind2]
+            text_after = text[ind2:]
+            # update middle
+            text_middle = '%' + text_middle
+            # if any newlines, make sure all lines are commented
+            if '\n' in text_middle:
+                text_middle = text_middle.replace('\n', '\n%')
+                # add new line at end?
+                #text_middle += '\n'
+            text = text_before + text_middle + text_after
+            if verbose:
+                print('----- before commenting ----')
+                print(c)
+                print('----- after commenting -----')
+                print(text_middle)
+                print('-----------------------------')
+                print('')
+            # text = text.replace(c, '%'+c)
+            # # if newlines, make sure next lines are commented as well
+            # if '\n' in text: 
+            #     text.replace('\n', '\n%')
+            #     # add newline at end
+            #     text += '\n'
             if verbose:
                 print(c, 'gets commented')
 
