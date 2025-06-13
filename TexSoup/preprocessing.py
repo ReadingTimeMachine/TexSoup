@@ -592,6 +592,7 @@ def generate_find_replace_newcommands(args_new, arg_type = 'newcommand', verbose
     find_replace = []
     comments = []
     error = [False]
+    err = False
     #print('hi1')
     # print('args new at top:')
     # print(args_new)
@@ -603,7 +604,16 @@ def generate_find_replace_newcommands(args_new, arg_type = 'newcommand', verbose
         # fn = LaTeX of new command
         # i1,i2 = where new command is defined
         # nArgs = number of arguments
-        n,fn,i1,i2,nArgs = nc
+        try:
+            n,fn,i1,i2,nArgs = nc
+        except Exception as e:
+            if verbose:
+                print('Met error in unpacking of args:', str(e))
+                print('nc = ', nc)
+                err = True
+        if err:
+            continue
+
         #print('hi2')
         if nArgs == 0: # no arguements
             if ('\\begin' in fn and not ('\\end' in fn)) or \
