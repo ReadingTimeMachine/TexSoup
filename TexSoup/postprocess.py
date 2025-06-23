@@ -212,20 +212,20 @@ def parse_soup(soup, tex_doc_accent, verbose=False):
                                     return '',err
                                 texout_arr.append((strout, 'S-command'))
                             # JPN added 20250622
-                            elif 'section' in str(ss.name):
-                                strout = str(ss)
-                                isAccent = False
-                                for a in accents:
-                                    if a in strout:
-                                        isAccent = True
-                                if not isAccent:
-                                    for a in accents_alone:
-                                        if a in strout:
-                                            isAccent = True
-                                if isAccent:
-                                    texout_arr.append((strout,'accent'))
-                                else:
-                                    texout_arr.append((str(ss), 'section')) 
+                            # elif 'section' in str(ss.name):
+                            #     strout = str(ss)
+                            #     isAccent = False
+                            #     for a in accents:
+                            #         if a in strout:
+                            #             isAccent = True
+                            #     if not isAccent:
+                            #         for a in accents_alone:
+                            #             if a in strout:
+                            #                 isAccent = True
+                            #     if isAccent:
+                            #         texout_arr.append((strout,'accent'))
+                            #     else:
+                            #         texout_arr.append((str(ss), 'section')) 
                             elif type(ss.expr) == TexNamedEnv:
                                 #if phrase in str(ss):
                                 #    print('here now in named env')
