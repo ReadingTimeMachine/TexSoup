@@ -103,6 +103,7 @@ def get_replacement_tex(tex_doc, soup, isss, s, verbose=False, strip=True):
         print('HAS ERROR')
     return strout, err
 
+
 def parse_soup(soup, tex_doc_accent, verbose=False):
     icount = 0
     texout_arr = []
