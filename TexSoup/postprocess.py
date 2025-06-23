@@ -103,6 +103,7 @@ def get_replacement_tex(tex_doc, soup, isss, s, verbose=False, strip=True):
         print('HAS ERROR')
     return strout, err
 
+
 def parse_soup(soup, tex_doc_accent, verbose=False):
     icount = 0
     texout_arr = []
@@ -328,8 +329,8 @@ def parse_soup_to_tags(soup, tex_doc_nc, verbose=False):
         if verbose:
             print('ERROR: parse_soup -- erroring out')
             return '',True
-    # print('ALSO CHANGE HERE!')
-    # return texout_arr,err
+    print('ALSO CHANGE HERE!')
+    return texout_arr,err
     #count = 0
     #for t,tt in texout_arr:
     #    if ' The key practical difference between both methods' in t:
